@@ -27,7 +27,7 @@ async function writeJson(file, data) {
 }
 
 const app = express();
-const PORT = 3001;
+const PORT = Number(process.env.PORT) || 3001;
 app.use(cors());
 app.use(express.json({ limit: "30mb" }));
 
@@ -256,6 +256,22 @@ app.post("/api/users", async (req, res) => {
   await writeJson(USERS_FILE, [user, ...users.filter(u => u.id !== user.id)]);
   res.json(user);
 });
+// Serve frontend (Vite build) in production deployments like Render.
+const DIST_DIR = path.join(__dirname, "..", "dist");
+const DIST_INDEX = path.join(DIST_DIR, "index.html");
+if (fsSync.existsSync(DIST_DIR)) {
+  app.use(express.static(DIST_DIR));
+  app.get(/^(?!\/api\/).*/, (_req, res) => {
+    res.sendFile(DIST_INDEX);
+  });
+} else {
+  app.get("/", (_req, res) => {
+    res.status(200).json({
+      ok: true,
+      message: "API server is running. Frontend build not found.",
+    });
+  });
+}
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Print API running at http://0.0.0.0:${PORT}`);
